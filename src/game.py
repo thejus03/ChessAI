@@ -10,6 +10,35 @@ class Game:
         self.dragger = Dragger()
         self.player = "white"
         self.theme = Themes()
+        
+    def show_mode(self, screen):
+        # pygame.draw.rect(screen, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
+        screen.fill((0,0,0))
+        start_y = 300
+        # print(pygame.font.get_fonts())
+        font_address = pygame.font.match_font("copperplate", bold=True, italic=False)
+        font = pygame.font.Font(font_address, 64)
+        
+        text = "Mode"
+        text_surface = font.render(text, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(WIDTH//2, start_y))
+        screen.blit(text_surface, text_rect)
+
+        font_address = pygame.font.match_font("chalkduster", bold=False, italic=False)
+        font = pygame.font.Font(font_address, 32)
+        
+        text = "Player vs Player"
+        text_surface = font.render(text, True, (255, 255, 255))        
+        text_rect = text_surface.get_rect(center=(WIDTH//2, start_y + 100))
+        screen.blit(text_surface, text_rect)
+        pygame.draw.rect(screen, (177,127,84), (text_rect.x - 10, text_rect.y - 10, text_rect.width + 20, text_rect.height + 20), 4, border_radius=20)
+        
+        text= "Player vs ChessAI"
+        text_surface = font.render(text, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(WIDTH//2, start_y + 200))
+        screen.blit(text_surface, text_rect)
+        pygame.draw.rect(screen, (99,168,248), (text_rect.x - 10, text_rect.y - 10, text_rect.width + 20, text_rect.height + 20), 4, border_radius=20)
+        
     
     def show_bg(self, screen):
         theme = self.theme.theme
