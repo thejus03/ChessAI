@@ -2,11 +2,15 @@ import copy
 from const import *
 import random
 import time
+from zobrist import Zobrist
 
 class ChessAI:
     def __init__(self):
         self.board = None
+        self.zobrist = Zobrist()
+        self.cache = {}
         self.count = 0
+        self.counter = 0
         self.prune = 0
         self.depth = None
     
@@ -30,6 +34,12 @@ class ChessAI:
         return best_move
     
     def eval_board(self):
+
+        if self.board.in_check("white"):
+            return float("-inf")
+        elif self.board.in_check("black"):
+            return float("inf")
+        
         # Count the material difference between white and black
         white_score = 0
         black_score = 0
@@ -82,40 +92,62 @@ class ChessAI:
             # Score, Move, Square
             return (self.eval_board(), None, None)     
         else:
-            # if self.hash_board(self.board) in self.cache:
-            #     self.counter += 1
-                # return self.cache[self.hash_board(self.board)]
+            
+            zobrist_hash = self.zobrist.get_hash(self.board, player)
+            if zobrist_hash in self.cache:
+                info = self.cache[zobrist_hash]
+                depth_stored = info["depth"]
+                score_stored = info["score"]
+                move_stored = info["best_move"]
+                flag_stored = info["flag"]
+                
+                if depth_stored >= depth:
+                    self.counter += 1
+                    if flag_stored == "exact":
+                        return move_stored
+                    elif flag_stored == "lowerbound":
+                        alpha = max(alpha, score_stored)
+                    elif flag_stored == "upperbound":
+                        beta = min(beta, score_stored)
+                    
+                    if alpha >= beta:
+                        self.counter += 1
+                        return move_stored
+                
             best_move = None
+            original_alpha = alpha
+            original_beta = beta
+            
             for row in range(ROWS):
                 for col in range(COLS):
                     
                     if self.board.squares[row][col].is_my_piece(player):
+                        
                         square = self.board.squares[row][col]
                         piece = square.piece
                         
                         self.board.calc_moves(row, col)
 
-                        # piece.moves.sort(key = lambda x: self.get_score(x, player), reverse = True)
-
-                        # piece.moves.sort(key=lambda move: self.move_heuristic(move, piece, player), reverse = (player == "white"))
+                        piece.moves.sort(key=lambda move: self.move_heuristic(move, piece, player), reverse = (player == "white"))
 
                         for move in piece.moves:
                             
                             final_piece = self.board.squares[move[0]][move[1]].piece
 
                             moved_state = piece.moved
-                            castling = piece.type == "king" and self.board.castling(row, col, move) 
-                            en_passant = piece.type == "pawn" and abs(col - move[1]) == 1 and self.board.squares[move[0]][move[1]].is_empty()
+                            castling = piece.type == "king" and self.board.is_castling(row, col, move) 
+                            is_en_passant_move = piece.type == "pawn" and abs(col - move[1]) == 1 and self.board.squares[move[0]][move[1]].is_empty()
                             pawn_promotion = piece.type == "pawn" and self.board.check_promotion(piece, move)
 
                             # Do the move
                             self.board.move(row, col, move)    
-
+                            # Save the states of en_passant of board
+                            en_passant_states = self.board.prev_en_passant.copy()                            
                             res = self.minimax(depth - 1, alpha, beta, self.next_player(player), start_time, time_limit)
                             self.count += 1
 
                             # Undo the move                            
-                            self.board.undo_move(row, col, move[0], move[1], final_piece, castling=castling, en_passant = en_passant, pawn_promotion = pawn_promotion, moved_state = moved_state)
+                            self.board.undo_move(row, col, move[0], move[1], final_piece, castling=castling, is_en_passant_move = is_en_passant_move, en_passant_states = en_passant_states, pawn_promotion = pawn_promotion, moved_state = moved_state)
 
                             if res:
                                 if best_move:
@@ -149,7 +181,26 @@ class ChessAI:
                                             return best_move
                                 else:
                                     best_move = (res[0], move, square)
-        # self.cache[self.hash_board(self.board)] = best_move
+                                    
+        
+        score = best_move[0]
+        
+        if score <= original_alpha:
+            flag = "upperbound"
+        elif score >= original_beta:
+            flag = "lowerbound"
+        else:
+            flag = "exact"
+        
+        
+        self.cache[self.zobrist.get_hash(self.board, player)] = {
+            "best_move":best_move,
+            "depth": depth,
+            "score": score,
+            "flag": flag
+
+        }
+        
         return best_move
     
     def next_move(self, board):
@@ -157,8 +208,8 @@ class ChessAI:
         self.count = 0
         self.prune = 0
         start_time = time.time()
-        best_move = self.minimax(depth = 4, alpha=float('-inf'), beta = float('inf'), player = "black") 
-        # best_move = self.iterative_deepening(max_depth=5, time_limit=5.0)
+        best_move = self.minimax(depth = 8, alpha=float('-inf'), beta = float('inf'), player = "black") 
+        # best_move = self.iterative_deepening(max_depth=10, time_limit=10.0)
         end_time = time.time()
         if best_move:
             sc, move, square = best_move
@@ -168,7 +219,8 @@ class ChessAI:
             print(f"Number of nodes pruned: {self.prune:,}")
             # print(f"Deepest depth reached: {self.depth - 1}")
             print(f"Time taken: {(end_time - start_time):.2f} seconds")
-            # print(f"Number of times accessed cache: {self.counter}")
+            print(f"Number of times accessed cache: {self.counter}")
+            print(f"Size of cache: {len(self.cache)}")
             board.move(square.row, square.col, move) 
             # print(self.hash_board(self.board))
         else:

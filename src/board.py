@@ -8,6 +8,7 @@ class Board:
     def __init__(self):
         self.squares = [[0 for _ in range(COLS)] for _ in range(ROWS)]
         self.last_move = None
+        self.prev_en_passant = []
         self._create()
         self._add_pieces('white')
         self._add_pieces('black')
@@ -51,7 +52,15 @@ class Board:
         for row in range(ROWS):
             for col in range(COLS):
                 if self.squares[row][col].is_my_piece(color) and self.squares[row][col].piece.type == "pawn":
+                    self.prev_en_passant.append((row, col))
                     self.squares[row][col].piece.en_passant = False
+    
+    def set_back_en_passant(self, en_passant_states):
+        """
+            Set back en passant to the previous state
+        """
+        for row, col in en_passant_states:
+            self.squares[row][col].piece.en_passant = True
      
     def calc_moves(self, row, col):
         """
@@ -176,12 +185,17 @@ class Board:
         # Pawn moves 
         if piece.type == "pawn":
             ## Adding all moves
+            all_moves = []
             if piece.moved:
-                all_moves = [(row + piece.dir, col)] 
+                if self.within_bounds(row + piece.dir, col) and self.squares[row + piece.dir][col].is_empty(): 
+                    all_moves.append((row + piece.dir, col))
             else:
-                all_moves = [(row + piece.dir, col), (row + 2 * piece.dir, col)] 
+                if self.within_bounds(row + piece.dir, col) and self.squares[row + piece.dir][col].is_empty():
+                    all_moves.append((row + piece.dir, col))
+                    if self.within_bounds(row + 2 * piece.dir, col) and self.squares[row + 2 * piece.dir][col].is_empty():
+                        all_moves.append((row + 2 * piece.dir, col))
 
-            all_moves = [move for move in all_moves if self.within_bounds(move[0], move[1]) and self.squares[move[0]][move[1]].is_empty()]
+            # all_moves = [move for move in all_moves if self.within_bounds(move[0], move[1]) and self.squares[move[0]][move[1]].is_empty()]
 
             if self.within_bounds(row + piece.dir, col + 1) and self.squares[row + piece.dir][col + 1].is_rival_piece(piece.color):
                 all_moves.append((row + piece.dir, col + 1))
@@ -296,14 +310,39 @@ class Board:
                 possible_moves = [move for move in possible_moves if not self.still_in_check(row, col, move)]
 
             piece.moves = possible_moves
+    
+    def can_castle(self, king, side):
+        if king.moved:
+            return False
 
-    def castling(self, row, col, next_move):
+        if king.color == "white":
+            row = 0
+            
+        else:
+            row = 7
+                
+        if side == "queen":
+            col = 0
+            left_rook = self.squares[row][col].piece
+            if left_rook and not left_rook.moved:
+                return True
+            else:
+                return False
+        else:
+            col = 7
+            right_rook = self.squares[row][col].piece
+            if right_rook and not right_rook.moved:
+                return True
+            else:
+                return False
+ 
+    def is_castling(self, row, col, next_move):
         """
             Check if the move is a castling move
         """
         return abs(col - next_move[1]) == 2
 
-    def en_passant(self, row, col, next_move):
+    def is_en_passant_move(self, row, col, next_move):
         """
             Check if the move is an en passant move
         """
@@ -336,7 +375,7 @@ class Board:
         
         if piece.type == "pawn":
             # Check if pawn moved by 2 rows
-            if self.en_passant(row, col, move):
+            if self.is_en_passant_move(row, col, move):
                piece.en_passant = True 
 
             else:
@@ -345,7 +384,7 @@ class Board:
                     self.squares[move[0]][move[1]].piece = Queen(piece.color)
                 
         # King castling
-        if piece.type == "king" and self.castling(row, col, move):
+        if piece.type == "king" and self.is_castling(row, col, move):
             diff = move[1] - col 
             # Move the rook
             self.move(row, 0 if diff < 0 else 7, (row, move[1] + 1 if diff < 0 else move[1] - 1), simulate)
@@ -360,6 +399,7 @@ class Board:
         }
         
         # Remove en passant from all pawns from rival player
+        self.prev_en_passant.clear()
         self.set_en_passant_false(self.rival_player(piece.color))
         
         
@@ -370,8 +410,9 @@ class Board:
     def valid_move(self, piece, move):
         return move in piece.moves
     
-    def undo_move(self, start_row, start_col, end_row, end_col, captured_piece, castling, en_passant, pawn_promotion, moved_state):
+    def undo_move(self, start_row, start_col, end_row, end_col, captured_piece, castling, is_en_passant_move, en_passant_states, pawn_promotion, moved_state):
         # Move the piece back to the start position
+        self.set_back_en_passant(en_passant_states)
         piece = self.squares[end_row][end_col].piece
         self.squares[end_row][end_col].piece = captured_piece
         self.squares[start_row][start_col].piece = piece
@@ -381,7 +422,7 @@ class Board:
             self.squares[start_row][start_col].piece = Pawn(piece.color)
             self.squares[start_row][start_col].piece.moved = True
         
-        if en_passant: 
+        if is_en_passant_move: 
             self.squares[end_row][end_col].piece = None
             self.squares[start_row][end_col].piece = Pawn(self.rival_player(piece.color))
             self.squares[start_row][end_col].piece.en_passant = True
@@ -393,6 +434,7 @@ class Board:
             self.squares[start_row][3 if diff < 0 else 5].piece = None
             self.squares[start_row][0 if diff < 0 else 7].piece = rook
             rook.moved = False
+        
             
 
     def in_check(self, color):
