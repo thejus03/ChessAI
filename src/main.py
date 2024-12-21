@@ -15,7 +15,7 @@ class Main:
         # Set name of window
         pygame.display.set_caption('Chess')
         self.dragger = self.game.dragger
-        self.ChessAI = ChessAI()
+        self.ChessAI = ChessAI(self.board)
         self.mode = None
         
         self.game_over = False

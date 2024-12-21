@@ -577,7 +577,7 @@ class Board:
         """
         return abs(row - next_move[0]) == 2
 
-    def move(self, row, col, move, move_history=None, attack_info=None, simulate = False):
+    def move(self, row, col, move):
         # Remove en passant from all pawns from player
         self.set_en_passant_false()
 
@@ -614,10 +614,6 @@ class Board:
             self.squares[move[0]][move[1] + 1 if diff < 0 else move[1] - 1].piece = rook
             rook.moved = True
             
-        
-
-        
-            
         piece.moved = True
 
         self.last_move = {
@@ -633,8 +629,23 @@ class Board:
     def valid_move(self, piece, move):
         return move in piece.moves
     
-    def undo_move(self, start_row, start_col, end_row, end_col, captured_piece, castling, is_en_passant_move, en_passant_pos, pawn_promotion, moved_state, white_checkmate, black_checkmate, white_stalemate, black_stalemate):
-        # Move the piece back to the start position
+    def undo_move(self, prev_state):
+        
+        start_row = prev_state["start_row"]
+        start_col = prev_state["start_col"]
+        end_row = prev_state["end_row"]
+        end_col = prev_state["end_col"]
+        captured_piece = prev_state["captured_piece"]
+        castling = prev_state["castling"]
+        is_en_passant_move = prev_state["is_en_passant_move"]
+        en_passant_pos = prev_state["en_passant_pos"]
+        pawn_promotion = prev_state["pawn_promotion"]
+        moved_state = prev_state["moved_state"]
+        white_checkmate = prev_state["white_checkmate"]
+        black_checkmate = prev_state["black_checkmate"]
+        white_stalemate = prev_state["white_stalemate"]
+        black_stalemate = prev_state["black_stalemate"]
+        
         self.set_en_passant_false()
         piece = self.squares[end_row][end_col].piece
         self.squares[end_row][end_col].piece = captured_piece

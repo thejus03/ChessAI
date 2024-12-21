@@ -13,10 +13,9 @@ class Game:
         self.theme = Themes()
         
     def show_mode(self, screen):
-        # pygame.draw.rect(screen, (0, 0, 0), (0, 0, WIDTH, HEIGHT))
         screen.fill((0,0,0))
         start_y = 300
-        # print(pygame.font.get_fonts())
+
         font_address = pygame.font.match_font("copperplate", bold=True, italic=False)
         font = pygame.font.Font(font_address, 64)
         
@@ -74,14 +73,20 @@ class Game:
             for move in piece.moves:
                 finalRow, finalCol = move
                 if self.board.squares[finalRow][finalCol].has_piece():
+                    
                     color = (218,89,70)              
-                    gfxdraw.aacircle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 2, color)  
-                    gfxdraw.filled_circle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 2, color)  
+                    gfxdraw.aacircle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, 30, color)  
+                    gfxdraw.filled_circle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, 30, color)
+                    
+                    color = (218,89,70, 210)              
+                    gfxdraw.aacircle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, 41, color)  
+                    gfxdraw.filled_circle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, 41, color)  
 
                 else:
-                    color = theme.dark_trace
-                    gfxdraw.aacircle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 6, color)  
-                    gfxdraw.filled_circle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 6, color)  
+                    
+                    color = theme.dark_trace if (finalRow + finalCol) % 2 else theme.light_trace
+                    gfxdraw.aacircle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 7 + 1, color)  
+                    gfxdraw.filled_circle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 7 + 1, color)  
 
     def show_checkmate(self, screen, color):
         screen.fill((0,0,0))
