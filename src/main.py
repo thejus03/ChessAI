@@ -17,8 +17,12 @@ class Main:
         self.dragger = self.game.dragger
         self.ChessAI = ChessAI()
         self.mode = None
+        
+        self.game_over = False
          
     def start(self):
+        attack_info = None
+        
         while True:
             if not self.mode:
                 self.game.show_mode(self.screen)
@@ -31,6 +35,28 @@ class Main:
                             self.mode = "chessai"
                         else:
                             continue
+                    elif event.type == pygame.QUIT:
+                        pygame.quit()
+                        sys.exit()
+            elif self.game_over:
+                if self.game_over == "white_checkmate":
+                    self.game.show_checkmate(self.screen, "black")
+                elif self.game_over == "black_checkmate":
+                    self.game.show_checkmate(self.screen, "white")
+                elif self.game_over == "stalemate":
+                    self.game.show_stalemate(self.screen)
+                
+                for event in pygame.event.get():
+                    
+                    if event.type == pygame.KEYDOWN:
+                        if event.key == pygame.K_r:
+                            self.game.reset()
+                            self.board = self.game.board
+                            self.dragger = self.game.dragger
+                            self.mode = None
+                            self.game_over = False
+
+                        # Quit Game    
                     elif event.type == pygame.QUIT:
                         pygame.quit()
                         sys.exit()
@@ -49,6 +75,18 @@ class Main:
                     pygame.display.update()
                     
                     self.ChessAI.next_move(self.board)
+
+                    attack_info = self.board.get_attack_info(self.board.king_pos(self.board.rival_player(self.game.player)))
+                    self.board.check_gamestate(attack_info)
+                    # Check for checkmate or stalemate
+                    if self.board.white_checkmate: # White loses
+                        self.game_over = "white_checkmate"
+                    elif self.board.black_checkmate: # Black loses
+                        self.game_over = "black_checkmate"
+                    elif self.board.black_stalemate or self.board.white_stalemate:
+                        self.game_over = "stalemate"
+                    
+                    # Change player
                     self.game.next_player()
                 else:
                     
@@ -69,7 +107,11 @@ class Main:
                                     # if self.board.in_check(self.game.player):
                                         # self.board.calc_moves(clicked_row, clicked_col)
                                     # else:
-                                    self.board.calc_moves(clicked_row, clicked_col)
+                                    if not attack_info:
+                                        king_pos = self.board.king_pos(self.game.player)
+                                        attack_info = self.board.get_attack_info(king_pos)
+                                    # print(attack_info)
+                                    self.board.calc_moves(clicked_row, clicked_col, attack_info)
                                     self.dragger.start_drag(piece) 
                                     self.dragger.save_init(event.pos)
                                     
@@ -100,11 +142,22 @@ class Main:
 
                                 if self.board.valid_move(piece, (released_row, released_col)):
                                     self.board.move(self.dragger.initialRow, self.dragger.initialCol, (released_row, released_col))
+                                    attack_info = self.board.get_attack_info(self.board.king_pos(self.board.rival_player(self.game.player)))
+                                    self.board.check_gamestate(attack_info)
+                                    # Check for checkmate or stalemate
+                                    if self.board.white_checkmate: # White loses
+                                        self.game_over = "white_checkmate"
+                                    elif self.board.black_checkmate: # Black loses
+                                        self.game_over = "black_checkmate"
+                                    elif self.board.black_stalemate or self.board.white_stalemate:
+                                        self.game_over = "stalemate"
                                     
                                     # Change player
                                     self.game.next_player()
+                            
                                     
                                 self.dragger.stop_drag()
+
 
                         # Key press to change Theme
                         if event.type == pygame.KEYDOWN:
@@ -116,6 +169,7 @@ class Main:
                                 self.board = self.game.board
                                 self.dragger = self.game.dragger
                                 self.mode = None
+                                attack_info = None
 
                         # Quit Game    
                         elif event.type == pygame.QUIT:

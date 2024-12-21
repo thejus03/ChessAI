@@ -35,11 +35,13 @@ class ChessAI:
     
     def eval_board(self):
 
-        if self.board.in_check("white"):
-            return float("-inf")
-        elif self.board.in_check("black"):
-            return float("inf")
-        
+        if self.board.white_checkmate:
+            return float('-inf')
+        elif self.board.white_stalemate or self.board.black_stalemate:
+            return 0
+        elif self.board.black_checkmate:
+            return float('inf')
+
         # Count the material difference between white and black
         white_score = 0
         black_score = 0
@@ -51,44 +53,136 @@ class ChessAI:
                         white_score += p.value
                     else:
                         black_score += p.value
-        return white_score - black_score
+        return round(white_score - black_score, 2)
     
-    def move_heuristic(self, move, piece, player):
+    def move_heuristic(self, move, piece, player, attack_info):
         r, c = move
         final_square = self.board.squares[r][c]
         heuristic = 0
 
-        # Captures: Value of captured piece
-        if final_square.is_rival_piece(player):
-            heuristic += final_square.piece.value * 10  # Capture is highly prioritized
-
-
-        # # Central control: Bonus for moves toward the center
-        center_dist = abs(r - 3.5) + abs(c - 3.5)
-        heuristic += (4 - center_dist)  # Closer to center gets higher score
-
-        # Positional improvements: Adjust based on type of piece
+        # Positional heurisitcs in terms of white (from stockfish)
+        pawn = [
+            [0,   0,   0,   0,   0,   0,   0,   0],
+            [5,  10,  10, -20, -20,  10,  10,   5],
+            [5,  -5, -10,   0,   0, -10,  -5,   5],
+            [0,   0,   0,  20,  20,   0,   0,   0],
+            [5,   5,  10,  25,  25,  10,   5,   5],
+            [10,  10,  20,  30,  30,  20,  10,  10],
+            [50,  50,  50,  50,  50,  50,  50,  50],
+            [0,   0,   0,   0,   0,   0,   0,   0]
+        ]
         
-       # Positional improvements: Adjust based on type of the moving piece
+        knight = [
+          [-50, -40, -30, -30, -30, -30, -40, -50],
+          [-40, -20,   0,   0,   0,   0, -20, -40],
+          [-30,   0,  10,  15,  15,  10,   0, -30],
+          [-30,   5,  15,  20,  20,  15,   5, -30],
+          [-30,   0,  15,  20,  20,  15,   0, -30],
+          [-30,   5,  10,  15,  15,  10,   5, -30],
+          [-40, -20,   0,   5,   5,   0, -20, -40],
+          [-50, -40, -30, -30, -30, -30, -40, -50]
+        ]
+        
+        bishop = [
+          [-20, -10, -10, -10, -10, -10, -10, -20],
+          [-10,   0,   0,   0,   0,   0,   0, -10],
+          [-10,   0,   5,  10,  10,   5,   0, -10],
+          [-10,   5,   5,  10,  10,   5,   5, -10],
+          [-10,   0,  10,  10,  10,  10,   0, -10],
+          [-10,  10,  10,  10,  10,  10,  10, -10],
+          [-10,   5,   0,   0,   0,   0,   5, -10],
+          [-20, -10, -10, -10, -10, -10, -10, -20]
+        ]
+        
+        rook = [
+            [0, 0, 0, 5, 5, 0, 0, 0],
+            [-5, 0, 0, 0, 0, 0, 0, -5],
+            [-5, 0, 0, 0, 0, 0, 0, -5],
+            [-5, 0, 0, 0, 0, 0, 0, -5],
+            [-5, 0, 0, 0, 0, 0, 0, -5],
+            [-5, 0, 0, 0, 0, 0, 0, -5],
+            [5, 10, 10, 10, 10, 10, 10, 5],
+            [0, 0, 0, 0, 0, 0, 0, 0]
+        ]
+        
+        queen = [
+            [-20, -10, -10,  -5,  -5, -10, -10, -20],
+            [-10,   0,   5,   0,   0,   0,   0, -10],
+            [-10,   5,   5,   5,   5,   5,   0, -10],
+            [ -5,   0,   5,   5,   5,   5,   0,  -5],
+            [ -5,   0,   5,   5,   5,   5,   0,  -5],
+            [-10,   0,   5,   5,   5,   5,   0, -10],
+            [-10,   0,   0,   0,   0,   0,   0, -10],
+            [-20, -10, -10,  -5,  -5, -10, -10, -20]
+        ]
+        
+        king = [
+            [-30, -40, -40, -50, -50, -40, -40, -30],
+            [-30, -40, -40, -50, -50, -40, -40, -30],
+            [-30, -40, -40, -50, -50, -40, -40, -30],
+            [-30, -40, -40, -50, -50, -40, -40, -30],
+            [-20, -30, -30, -40, -40, -30, -30, -20],
+            [-10, -20, -20, -20, -20, -20, -20, -10],
+            [ 20,  20,   0,   0,   0,   0,  20,  20],
+            [ 20,  30,  10,   0,   0,  10,  30,  20]
+        ]
+        
+        # Captures: Value of captured piece - value of moving piece 
+        if final_square.is_rival_piece(player):
+            heuristic += final_square.piece.value * 10 - piece.value  # Capture is highly prioritized
+
+        # Promoting a pawn is highly prioritized
         if piece.type == "pawn":
-            heuristic += 1  # Pawns moving forward slightly prioritized
-        elif piece.type == "knight" or piece.type == "bishop":
-            heuristic += 2  # Knights and bishops moving toward action zones
+            if piece.color == "white" and r == 0:
+                heuristic += 80 # Queen value minus pawn
+            elif piece.color == "black" and r == 7:
+                heuristic += 80
+
+        # Moving to a square that is attacked by the opponent is discouraged
+        atk_squares = attack_info["atk_squares"]
+        if (r,c) in atk_squares:
+            heuristic -= piece.value
+
+        # Positional heuristics
+        if piece.type == "pawn":
+            if piece.color == "white":
+                heuristic += pawn[r][c]            
+            else:
+                heuristic += pawn[7 - r][c]
+        elif piece.type == "knight":
+            if piece.color == "white":
+                heuristic += knight[r][c]
+            else:
+                heuristic += knight[7 - r][c]
+        elif piece.type == "bishop":
+            if piece.color == "white":
+                heuristic += bishop[r][c]
+            else:
+                heuristic += bishop[7 - r][c]
         elif piece.type == "rook":
-            heuristic += 1.5  # Rooks slightly prioritized for activity
+            if piece.color == "white":
+                heuristic += rook[r][c]
+            else:
+                heuristic += rook[7 - r][c]
         elif piece.type == "queen":
-            heuristic += 1.2  # Queens should remain active
+            if piece.color == "white":
+                heuristic += queen[r][c]
+            else:
+                heuristic += queen[7 - r][c]
         elif piece.type == "king":
-            heuristic -= 2  # Avoid unnecessary king moves unless castling
+            if piece.color == "white":
+                heuristic += king[r][c]
+            else:
+                heuristic += king[7 - r][c]
 
         return heuristic
 
     
-    def minimax(self, depth, alpha, beta, player, start_time = None, time_limit = None):
+    def minimax(self, depth, alpha, beta, player, attack_info, move_history, start_time = None, time_limit = None):
         if start_time and time.time() - start_time >= time_limit:
             return None  # Abort search if time is up
         
-        if depth == 0:
+        if depth == 0 or self.board.white_checkmate or self.board.black_checkmate or self.board.black_stalemate or self.board.white_stalemate:
             # Score, Move, Square
             return (self.eval_board(), None, None)     
         else:
@@ -102,8 +196,8 @@ class ChessAI:
                 flag_stored = info["flag"]
                 
                 if depth_stored >= depth:
-                    self.counter += 1
                     if flag_stored == "exact":
+                        self.counter += 1
                         return move_stored
                     elif flag_stored == "lowerbound":
                         alpha = max(alpha, score_stored)
@@ -117,7 +211,6 @@ class ChessAI:
             best_move = None
             original_alpha = alpha
             original_beta = beta
-            
             for row in range(ROWS):
                 for col in range(COLS):
                     
@@ -126,28 +219,44 @@ class ChessAI:
                         square = self.board.squares[row][col]
                         piece = square.piece
                         
-                        self.board.calc_moves(row, col)
+                        self.board.calc_moves(row, col, attack_info)
+                        
+                        piece.moves.sort(key=lambda move: self.move_heuristic(move, piece, player, attack_info), reverse = True)
 
-                        piece.moves.sort(key=lambda move: self.move_heuristic(move, piece, player), reverse = (player == "white"))
+                        piece_moves = piece.moves[:] 
+                        for move in piece_moves:
 
-                        for move in piece.moves:
-                            
                             final_piece = self.board.squares[move[0]][move[1]].piece
 
                             moved_state = piece.moved
                             castling = piece.type == "king" and self.board.is_castling(row, col, move) 
                             is_en_passant_move = piece.type == "pawn" and abs(col - move[1]) == 1 and self.board.squares[move[0]][move[1]].is_empty()
                             pawn_promotion = piece.type == "pawn" and self.board.check_promotion(piece, move)
+                            white_checkmate = self.board.white_checkmate
+                            black_checkmate = self.board.black_checkmate
+                            white_stalemate = self.board.white_stalemate
+                            black_stalemate = self.board.black_stalemate
 
+                            en_passant_pos = self.board.en_passant_pos   # Unsure if before or after move                        
                             # Do the move
-                            self.board.move(row, col, move)    
+                            before_hash = self.zobrist.get_hash(self.board, player)
+                            self.board.move(row, col, move, move_history, attack_info)    
+
+                            next_attack_info = self.board.get_attack_info(self.board.king_pos(self.next_player(player)))
+                            move_history.append((row, col, move[0], move[1]))
+                            self.board.check_gamestate(next_attack_info)
                             # Save the states of en_passant of board
-                            en_passant_states = self.board.prev_en_passant.copy()                            
-                            res = self.minimax(depth - 1, alpha, beta, self.next_player(player), start_time, time_limit)
+                            
+                            res = self.minimax(depth - 1, alpha, beta, self.next_player(player), next_attack_info, move_history, start_time, time_limit)
+                            move_history.pop()
                             self.count += 1
 
-                            # Undo the move                            
-                            self.board.undo_move(row, col, move[0], move[1], final_piece, castling=castling, is_en_passant_move = is_en_passant_move, en_passant_states = en_passant_states, pawn_promotion = pawn_promotion, moved_state = moved_state)
+                            # Undo the move         
+                            self.board.undo_move(row, col, move[0], move[1], final_piece, castling=castling, is_en_passant_move = is_en_passant_move, en_passant_pos = en_passant_pos, pawn_promotion = pawn_promotion, moved_state = moved_state, white_checkmate = white_checkmate, black_checkmate = black_checkmate, white_stalemate = white_stalemate, black_stalemate = black_stalemate)
+                            after_hash = self.zobrist.get_hash(self.board, player)
+
+                            if before_hash != after_hash:
+                                print("ERROR")
 
                             if res:
                                 if best_move:
@@ -155,34 +264,29 @@ class ChessAI:
                                     if player == "white":
                                         if (best_move[0] < res[0]):
                                             best_move = (res[0], move, square)
-                                        elif (best_move[0] == res[0]):
-                                            # Pick randomly between the two choices
-                                            opt = random.choice([0,1])
-                                            if opt == 1:
-                                                best_move = (res[0], move, square)
+                                        
                                         alpha = max(alpha, best_move[0])        
                                         if beta <= alpha:
                                             self.prune += 1
-                                            return best_move
+                                            break
 
                                     # Minimising player
                                     else:
                                         if (best_move[0] > res[0]):
                                             best_move = (res[0], move, square)
-
-                                        elif (best_move[0] == res[0]):
-                                            # Pick randomly between the two choices
-                                            opt = random.choice([0,1])
-                                            if opt == 1:
-                                                best_move = (res[0], move, square)
+                                        
                                         beta = min(beta, best_move[0])
                                         if beta <= alpha:
                                             self.prune += 1
-                                            return best_move
+                                            break
                                 else:
                                     best_move = (res[0], move, square)
-                                    
-        
+                
+                    if beta <= alpha:
+                        break   
+                if beta <= alpha:
+                    break
+                
         score = best_move[0]
         
         if score <= original_alpha:
@@ -198,17 +302,19 @@ class ChessAI:
             "depth": depth,
             "score": score,
             "flag": flag
-
         }
         
         return best_move
     
     def next_move(self, board):
-        self.update_board(board)
+        # self.update_board(board)
+        self.board = board
         self.count = 0
         self.prune = 0
+        self.counter = 0
+        attack_info = self.board.get_attack_info(self.board.king_pos("black"))
         start_time = time.time()
-        best_move = self.minimax(depth = 8, alpha=float('-inf'), beta = float('inf'), player = "black") 
+        best_move = self.minimax(depth = 5, alpha=float('-inf'), beta = float('inf'), player = "black", attack_info=attack_info, move_history = []) 
         # best_move = self.iterative_deepening(max_depth=10, time_limit=10.0)
         end_time = time.time()
         if best_move:
@@ -217,14 +323,11 @@ class ChessAI:
             print(f"ChessAI moves {square.piece.type} to {move} with a score of {sc}")
             print(f"Number of nodes searched: {self.count:,}")
             print(f"Number of nodes pruned: {self.prune:,}")
-            # print(f"Deepest depth reached: {self.depth - 1}")
             print(f"Time taken: {(end_time - start_time):.2f} seconds")
             print(f"Number of times accessed cache: {self.counter}")
             print(f"Size of cache: {len(self.cache)}")
             board.move(square.row, square.col, move) 
-            # print(self.hash_board(self.board))
-        else:
-            print("WHITE WINS")
+        
             
             
     def create_board_copy(self, board):
@@ -234,7 +337,7 @@ class ChessAI:
         self.board = self.create_board_copy(board)
     
     def next_player(self, player):
-        return "white" if player == "black" else "white"
+        return "white" if player == "black" else "black"
          
          
      

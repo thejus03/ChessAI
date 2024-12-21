@@ -3,6 +3,7 @@ from const import *
 from board import Board
 from dragger import Dragger
 from themes import Themes
+from pygame import gfxdraw
 
 class Game:
     def __init__(self):
@@ -72,10 +73,38 @@ class Game:
             piece = self.dragger.dragging_piece
             for move in piece.moves:
                 finalRow, finalCol = move
-                color = theme.dark_trace if (finalRow + finalCol) % 2 == 0 else theme.light_trace 
-                rect = (finalCol * SQ_SIZE, finalRow * SQ_SIZE, SQ_SIZE, SQ_SIZE)
-                pygame.draw.rect(screen, color, rect)
+                if self.board.squares[finalRow][finalCol].has_piece():
+                    color = (218,89,70)              
+                    gfxdraw.aacircle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 2, color)  
+                    gfxdraw.filled_circle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 2, color)  
 
+                else:
+                    color = theme.dark_trace
+                    gfxdraw.aacircle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 6, color)  
+                    gfxdraw.filled_circle(screen, finalCol * SQ_SIZE + SQ_SIZE // 2, finalRow * SQ_SIZE + SQ_SIZE // 2, SQ_SIZE // 6, color)  
+
+    def show_checkmate(self, screen, color):
+        screen.fill((0,0,0))
+        
+        font_address = pygame.font.match_font("copperplate", bold=True, italic=False)
+        font = pygame.font.Font(font_address, 64)
+        
+        text = f"{color.capitalize()} wins!"
+        text_surface = font.render(text, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(WIDTH//2, HEIGHT//2))
+        screen.blit(text_surface, text_rect)
+    
+    def show_stalemate(self, screen):
+        screen.fill((0,0,0))
+        
+        font_address = pygame.font.match_font("copperplate", bold=True, italic=False)
+        font = pygame.font.Font(font_address, 64)
+        
+        text = "DRAW"
+        text_surface = font.render(text, True, (255, 255, 255))
+        text_rect = text_surface.get_rect(center=(WIDTH//2, HEIGHT//2))
+        screen.blit(text_surface, text_rect)
+        
     def show_last_move(self, screen):
         theme = self.theme.theme
         
