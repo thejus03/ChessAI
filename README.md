@@ -57,13 +57,13 @@ Some of the features/optimisations made include:
 ```
     python -m venv venv
 ```
-- Install the required packages
-```
-    pip install -r requirements.txt
-```
 - Activate the virtual environment
 ```
     source venv/bin/activate
+```
+- Install the required packages
+```
+    pip install -r requirements.txt
 ```
 - Run the scripts
     - To play the game
