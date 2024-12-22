@@ -127,7 +127,7 @@ current_color = "white"
 for idx, (start_r, start_c, end_r, end_c) in enumerate(moves):
 
         piece = board.squares[start_r][start_c].piece
-        final_piece = board.squares[end_r][end_c].piece
+        captured_piece = board.squares[end_r][end_c].piece
         moved_state = piece.moved
         castling = piece.type == "king" and board.is_castling(start_r, start_c, (end_r, end_c))
         is_en_passant_move = (piece.type == "pawn" and abs(start_c - end_c) == 1 
@@ -145,19 +145,14 @@ for idx, (start_r, start_c, end_r, end_c) in enumerate(moves):
         board.move(start_r, start_c, (end_r, end_c))
         print(f"=== After Move {idx+1} ({current_color}) ===")
         print_board_and_hash(board, zobrist, "black" if current_color == "white" else "white")
-        # print(f"In check: {board.in_check('black' if current_color == 'white' else 'white')}")
-        print(f"White checkmate: {board.white_checkmate}")
-        print(f"Black checkmate: {board.black_checkmate}")
-        print(f"White stalemate: {board.white_stalemate}")
-        print(f"Black stalemate: {board.black_stalemate}")
         
         # Save the move details for undo
         move_history.append({
-            "start_r": start_r,
-            "start_c": start_c,
-            "end_r": end_r,
-            "end_c": end_c,
-            "final_piece": final_piece,
+            "start_row": start_r,
+            "start_col": start_c,
+            "end_row": end_r,
+            "end_col": end_c,
+            "captured_piece": captured_piece,
             "castling": castling,
             "is_en_passant_move": is_en_passant_move,
             "en_passant_pos": en_passant_pos,
@@ -177,27 +172,10 @@ for idx, (start_r, start_c, end_r, end_c) in enumerate(moves):
 print("=== Undoing Moves ===")
 for idx, move_info in enumerate(reversed(move_history)):
 
-        board.undo_move(move_info["start_r"],
-                        move_info["start_c"],
-                        move_info["end_r"],
-                        move_info["end_c"],
-                        move_info["final_piece"],
-                        castling=move_info["castling"],
-                        is_en_passant_move=move_info["is_en_passant_move"],
-                        en_passant_pos=move_info["en_passant_pos"],
-                        pawn_promotion=move_info["pawn_promotion"],
-                        moved_state=move_info["moved_state"],
-                        white_checkmate=move_info["white_checkmate"],
-                        black_checkmate=move_info["black_checkmate"],
-                        white_stalemate=move_info["white_stalemate"],
-                        black_stalemate=move_info["black_stalemate"])
+        board.undo_move(move_info)
     
         print(f"=== After Undo {idx+1} ===")
         print_board_and_hash(board, zobrist, move_info["current_color"])
-        print(f"White checkmate: {board.white_checkmate}")
-        print(f"Black checkmate: {board.black_checkmate}")
-        print(f"White stalemate: {board.white_stalemate}")
-        print(f"Black stalemate: {board.black_stalemate}")
         
 
 # Finally, compare hash values
