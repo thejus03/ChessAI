@@ -4,7 +4,7 @@
 
 ![Demo](https://i.giphy.com/media/v1.Y2lkPTc5MGI3NjExMW84cHY2ODYwZmpsOWlzYjRqbTlrNHc3NWZhODVraTZmcGNnM2Y3aCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/YeGbMaaDG27rD9xrHh/giphy.gif)
 
-The AI mode uses the minimax algorithm with alpha beta pruning to make the best move, thinking 5 moves ahead within reasonable time (usually 5 seconds). The evaluation function is based on the piece values and the position of the pieces on the board. Currently, the AI is not unbeatable, but it is quite a challenge for a beginner to intermediate player and definitely me.
+The AI mode uses the **minimax algorithm with alpha beta pruning** to make the best move, thinking *5 moves ahead within reasonable time (usually 5 seconds)*. The evaluation function is based on the piece values and the position of the pieces on the board. Currently, the AI is not unbeatable, but it is quite a challenge for a beginner to intermediate player and definitely me.
 
 Some of the features/optimisations made include:
 
