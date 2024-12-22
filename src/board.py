@@ -90,8 +90,6 @@ class Board:
         """
             Check if the game is in checkmate or stalemate
         """
-        # print("==== Game state ====")
-        # self.display_board()
         if attack_info["checks"] >= 2:
             king_pos = attack_info["king_pos"]
             king = self.squares[king_pos[0]][king_pos[1]].piece
@@ -111,8 +109,6 @@ class Board:
                         piece = self.squares[r][c].piece
                         self.calc_moves(r, c, attack_info)
                         if piece.moves: 
-                            # print(f"Piece: {piece.type}")
-                            # print(f"Moves: {piece.moves}")    
                             bool = True
                             break
             if not bool:
@@ -138,21 +134,11 @@ class Board:
                     self.black_stalemate = True
         
         
-        # print(f"White checkmate: {self.white_checkmate}")
-        # print(f"Black checkmate: {self.black_checkmate}")
-        # print(f"Attack info: {attack_info}")
-        # print(f"Bool state {bool}")
-        # print()
-
     def get_attack_info(self, king_pos): 
         try:
             king = self.squares[king_pos[0]][king_pos[1]].piece
         except TypeError:
             self.display_board()
-            # print(f"King pos: {king_pos}")
-            # print(f"White checkmate: {self.white_checkmate}")
-            # print(f"Black checkmate: {self.black_checkmate}")
-            # print(f"White stalemate: {self.white_stalemate}")
             
         color = self.rival_player(king.color)
         atk_squares = set()
