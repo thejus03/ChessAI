@@ -76,7 +76,7 @@ Some of the features/optimisations made include:
             chmod +x scripts/run.sh
         ```
         - Then run the script again
-        - Initially might take a few seconds to boot up pygame
+        - Initially might take a few seconds (~30 seconds) to boot up pygame
 
 ## How to play the game
 - The game starts with a page where user can select the mode of the game - Player v Player or Player v AI.
