@@ -200,11 +200,9 @@ class ChessAI:
                 piece = square.piece
                 
                 piece_moves = move_info[(row,col)] 
-                # self.board.calc_moves(row, col, attack_info)
                 
                 piece_moves.sort(key=lambda move: ( move == move_stored, self.move_heuristic(move, piece, player, attack_info)), reverse = True)
 
-                # piece_moves = piece.moves[:] 
                 for move in piece_moves:
 
                     moved_state = piece.moved
