@@ -48,61 +48,38 @@ original_hash = zobrist.get_hash(board, "white")
 
 
 
-# moves = [
-#     (6, 4, 4, 4),  # White pawn e2-e4
-#     (1, 4, 3, 4),  # Black pawn e7-e5
-#     (7, 6, 5, 5),  # White knight g1-f3
-#     (0, 1, 2, 2),  # Black knight b8-c6
-#     (7, 5, 5, 3),  # White bishop f1-d3 (path cleared by white’s e-pawn move)
-#     (0, 6, 2, 5),  # Black knight g8-f6 (instead of a blocked bishop move)
-#     (7, 3, 5, 5),  # White queen d1-f3 (a short, unobstructed diagonal move)
-#     (0, 3, 1, 4),  # Black queen d8-e7 (one-step diagonal, no blockage)
-#     (6, 3, 4, 3),  # White pawn d2-d4
-#     (3, 4, 4, 3),  # Black pawn e5xd4 (normal capture, not en passant)
-#     (7, 2, 4, 5),  # White bishop c1-f4 (long diagonal, now unobstructed)
-#     (2, 2, 4, 3),  # Black knight c6-d4 (a legal knight jump)
-#     (7, 1, 5, 2),  # White knight b1-c3 (knight jump)
-#     (0, 7, 0, 5),  # Black rook h8-f8 (now possible as g8 square is free)
-#     (6, 7, 4, 7),  # White pawn h2-h4 (two-step pawn move)
-#     (1, 6, 3, 6),  # Black pawn g7-g5 (two-step pawn move)
-#     (7, 4, 7, 6),  # White king e1-g1 (castling kingside, path is clear)
-#     (0, 4, 1, 4),  # Black king e8-e7 (a simple king move)
-# ]
+moves = [
+    (6, 4, 4, 4),  # 1)  White Pawn e2 → e4
+    (1, 4, 3, 4),  # 2)  Black Pawn e7 → e5
+    (7, 6, 5, 5),  # 3)  White Knight g1 → f3
+    (0, 1, 2, 2),  # 4)  Black Knight b8 → c6
+    (7, 5, 4, 2),  # 5)  White Bishop f1 → c4
+    (0, 5, 3, 2),  # 6)  Black Bishop f8 → c5
+    (6, 2, 5, 2),  # 7)  White Pawn c2 → c3
+    (1, 3, 2, 3),  # 8)  Black Pawn d7 → d6
+    (6, 3, 4, 3),  # 9)  White Pawn d2 → d4
+    (3, 2, 2, 1),  # 10) Black Bishop c5 → b6
+    (5, 5, 3, 5),  # 11) White Knight f3 → g5
+    (2, 2, 1, 4),  # 12) Black Knight c6 → e7  (FIXED to avoid self-capture)
+    (3, 5, 1, 5),  # 13) White Knight g5 → f7 (possible capture)
+    (2, 3, 3, 3),  # 14) Black Pawn d6 → d5
+    (4, 4, 3, 3),  # 15) White Pawn e4 × d5 (capture)
+    (0, 3, 3, 3),  # 16) Black Queen d8 × d5 (recapture)
+    (7, 3, 5, 5),  # 17) White Queen d1 → f3
+    (0, 2, 4, 6),  # 18) Black Bishop c8 → g4
+    (7, 2, 4, 5),  # 19) White Bishop c1 → f4
+    (4, 6, 3, 7),  # 20) Black Bishop g4 → h5
+]
+
 # moves = [
 #     (6,4,4,4),  # White e2-e4
 #     (1,4,3,4),  # Black e7-e5
-#     (6,3,4,3),  # White d2-d4
-#     (1,3,3,3),  # Black d7-d5
-#     (4,4,3,3),  # White e4xd5 en passant
+#     (7,3,3,7),  # White Qd1-h5
+#     (0,1,2,2),  # Black Nb8-c6
+#     (7,5,4,2),  # White Bf1-c4
 #     (0,6,2,5),  # Black Ng8-f6
-#     (7,6,5,5),  # White Ng1-f3
-#     (0,5,3,2),  # Black Bf8-c5
-#     (7,5,5,3),  # White Bf1-d3
-#     (7,4,7,6),  # White O-O
-#     (0,4,0,6),  # Black O-O
-#     (6,7,4,7),  # White h2-h4
-#     (1,6,3,6),  # Black g7-g5
-#     (4,7,3,6),  # White h4xg5 en passant
-#     (6,0,4,0),  # White a2-a4
-#     (1,0,2,0),  # Black a7-a6
-#     (4,0,3,0),  # White a4xa5
-#     (3,0,2,0),  # White a5-a6
-#     (2,0,1,0),  # White a6-a7
-#     (1,0,0,0),  # White a7-a8=Q
-#     (7,3,4,6),  # White Qd1-g4+
-#     (2,5,1,7),  # Black Rh8-h7
-#     (0,0,0,7)   # White Qa8-h8# (checkmate)
+#     (3,7,1,5)   # White Qh5xf7#
 # ]
-
-moves = [
-    (6,4,4,4),  # White e2-e4
-    (1,4,3,4),  # Black e7-e5
-    (7,3,3,7),  # White Qd1-h5
-    (0,1,2,2),  # Black Nb8-c6
-    (7,5,4,2),  # White Bf1-c4
-    (0,6,2,5),  # Black Ng8-f6
-    (3,7,1,5)   # White Qh5xf7#
-]
 
 
 def get_king(board, color):
@@ -142,9 +119,11 @@ for idx, (start_r, start_c, end_r, end_c) in enumerate(moves):
         
         # Make the move
         en_passant_pos= board.en_passant_pos
+        
         board.move(start_r, start_c, (end_r, end_c))
         print(f"=== After Move {idx+1} ({current_color}) ===")
         print_board_and_hash(board, zobrist, "black" if current_color == "white" else "white")
+        board.check_match()
         
         # Save the move details for undo
         move_history.append({
@@ -162,7 +141,8 @@ for idx, (start_r, start_c, end_r, end_c) in enumerate(moves):
             "black_checkmate": black_checkmate,
             "white_stalemate": white_stalemate,
             "black_stalemate": black_stalemate,
-            "current_color": current_color
+            "current_color": current_color,
+            "moved_piece": piece
         })
         
         # Switch color
@@ -176,7 +156,7 @@ for idx, move_info in enumerate(reversed(move_history)):
     
         print(f"=== After Undo {idx+1} ===")
         print_board_and_hash(board, zobrist, move_info["current_color"])
-        
+        board.check_match()
 
 # Finally, compare hash values
 final_hash = zobrist.get_hash(board, "white")

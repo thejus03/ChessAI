@@ -13,25 +13,6 @@ class ChessAI:
         self.cache_hits = 0
         self.nodes_pruned= 0
     
-    def iterative_deepening(self, max_depth, time_limit):
-        start_time = time.time()
-        best_move = None
-
-        for depth in range(1, max_depth + 1):
-            # Perform a minimax search at the current depth
-            move = self.minimax(depth, float('-inf'), float('inf'), "black", start_time, time_limit)
-
-            # Update the best move if the search completed
-            if move:
-                best_move = move
-
-            # Break if we've exceeded the time limit
-            if time.time() - start_time >= time_limit:
-                self.depth = depth
-                break
-
-        return best_move
-    
     def eval_board(self):
 
         if self.board.white_checkmate:
@@ -44,14 +25,11 @@ class ChessAI:
         # Count the material difference between white and black
         white_score = 0
         black_score = 0
-        for row in range(ROWS):
-            for col in range(COLS):
-                p = self.board.squares[row][col].piece
-                if p:
-                    if p.color == "white":
-                        white_score += p.value
-                    else:
-                        black_score += p.value
+        for row,col in self.board.white_pieces:
+            white_score += self.board.squares[row][col].piece.value
+        for row,col in self.board.black_pieces:
+            black_score += self.board.squares[row][col].piece.value
+
         return round(white_score - black_score, 2)
      
     def move_heuristic(self, move, piece, player, attack_info):
@@ -177,10 +155,11 @@ class ChessAI:
         return heuristic
 
     
-    def minimax(self, depth, alpha, beta, player, attack_info, zobrist_hash, start_time = None, time_limit = None):
+    def minimax(self, depth, alpha, beta, player, move_info, attack_info, zobrist_hash, start_time = None, time_limit = None):
         """
             Minimax algorithm with alpha-beta pruning + zobrist hasing + move ordering + other optimisations
         """
+        # s_t = time.time()
         if start_time and time.time() - start_time >= time_limit:
             return None  # Abort search if time is up
         
@@ -188,7 +167,7 @@ class ChessAI:
             # Score, Move, Square
             return (self.eval_board(), None, None)     
         else:
-            
+            move_stored = None
             if zobrist_hash in self.cache:
                 self.cache_hits += 1
                 
@@ -212,99 +191,109 @@ class ChessAI:
             best_move = None
             original_alpha = alpha
             original_beta = beta
-            for row in range(ROWS):
-                for col in range(COLS):
+            original_attack_info = attack_info
+            original_move_info = move_info
+
+            for row, col in move_info.keys():
+                
+                square = self.board.squares[row][col]
+                piece = square.piece
+                
+                piece_moves = move_info[(row,col)] 
+                # self.board.calc_moves(row, col, attack_info)
+                
+                piece_moves.sort(key=lambda move: ( move == move_stored, self.move_heuristic(move, piece, player, attack_info)), reverse = True)
+
+                # piece_moves = piece.moves[:] 
+                for move in piece_moves:
+
+                    moved_state = piece.moved
+                    castling = piece.type == "king" and self.board.is_castling(row, col, move) 
+                    is_en_passant_move = piece.type == "pawn" and abs(col - move[1]) == 1 and self.board.squares[move[0]][move[1]].is_empty()
+                    if is_en_passant_move:
+                        captured_piece = self.board.squares[row][move[1]].piece
+                    else:
+                        captured_piece = self.board.squares[move[0]][move[1]].piece
+                    pawn_promotion = piece.type == "pawn" and self.board.check_promotion(piece, move)
+                    white_checkmate = self.board.white_checkmate
+                    black_checkmate = self.board.black_checkmate
+                    white_stalemate = self.board.white_stalemate
+                    black_stalemate = self.board.black_stalemate
+                    en_passant_pos = self.board.en_passant_pos                      
+
+                    # save the state of board
+                    prev_state = {
+                        "start_row": row,
+                        "start_col": col,
+                        "end_row": move[0],
+                        "end_col": move[1],
+                        "moved_piece": piece,
+                        "captured_piece": captured_piece,
+                        "moved_state": moved_state,
+                        "castling": castling,
+                        "is_en_passant_move": is_en_passant_move,
+                        "en_passant_pos": en_passant_pos,
+                        "pawn_promotion": pawn_promotion,
+                        "white_checkmate": white_checkmate,
+                        "black_checkmate": black_checkmate,
+                        "white_stalemate": white_stalemate,
+                        "black_stalemate": black_stalemate
+                    }
                     
-                    if self.board.squares[row][col].is_my_piece(player):
+                    # Do the move
+
+                    self.board.move(row, col, move)    
+                     
+                    next_zobrist_hash = self.zobrist.get_hash(self.board, self.next_player(player))
+                    if next_zobrist_hash in self.cache:
+                        next_attack_info = self.cache[next_zobrist_hash]["attack_info"]   
+                        next_move_info = self.cache[next_zobrist_hash]["move_info"] 
+                        self.white_checkmate = self.cache[next_zobrist_hash]["white_checkmate"]
+                        self.black_checkmate = self.cache[next_zobrist_hash]["black_checkmate"]
+                        self.white_stalement = self.cache[next_zobrist_hash]["white_stalemate"]
+                        self.black_stalemate = self.cache[next_zobrist_hash]["black_stalemate"]
+                    else:
+                        next_attack_info = self.board.get_attack_info(self.board.king_pos(self.next_player(player)))
+                        next_move_info = self.board.get_move_info(self.next_player(player), next_attack_info)
+                        self.board.check_gamestate(next_attack_info, next_move_info)
+ 
+                    res = self.minimax(depth - 1, alpha, beta, self.next_player(player), next_move_info, next_attack_info, next_zobrist_hash, start_time, time_limit )
+                    
                         
-                        square = self.board.squares[row][col]
-                        piece = square.piece
-                        
-                        self.board.calc_moves(row, col, attack_info)
-                        
-                        piece.moves.sort(key=lambda move: self.move_heuristic(move, piece, player, attack_info), reverse = True)
+                    self.nodes_searched += 1
 
-                        piece_moves = piece.moves[:] 
-                        for move in piece_moves:
+                    # Undo the move         
+                    self.board.undo_move(prev_state)
 
-                            captured_piece = self.board.squares[move[0]][move[1]].piece
-                            moved_state = piece.moved
-                            castling = piece.type == "king" and self.board.is_castling(row, col, move) 
-                            is_en_passant_move = piece.type == "pawn" and abs(col - move[1]) == 1 and self.board.squares[move[0]][move[1]].is_empty()
-                            pawn_promotion = piece.type == "pawn" and self.board.check_promotion(piece, move)
-                            white_checkmate = self.board.white_checkmate
-                            black_checkmate = self.board.black_checkmate
-                            white_stalemate = self.board.white_stalemate
-                            black_stalemate = self.board.black_stalemate
-                            en_passant_pos = self.board.en_passant_pos                      
-
-                            # save the state of board
-                            prev_state = {
-                                "start_row": row,
-                                "start_col": col,
-                                "end_row": move[0],
-                                "end_col": move[1],
-                                "captured_piece": captured_piece,
-                                "moved_state": moved_state,
-                                "castling": castling,
-                                "is_en_passant_move": is_en_passant_move,
-                                "en_passant_pos": en_passant_pos,
-                                "pawn_promotion": pawn_promotion,
-                                "white_checkmate": white_checkmate,
-                                "black_checkmate": black_checkmate,
-                                "white_stalemate": white_stalemate,
-                                "black_stalemate": black_stalemate
-                            }
-                            
-                            # Do the move
-                            self.board.move(row, col, move)    
-
-                            next_zobrist_hash = self.zobrist.get_hash(self.board, self.next_player(player))
-                            if next_zobrist_hash in self.cache:
-                                next_attack_info = self.cache[next_zobrist_hash]["attack_info"]
-                                self.white_checkmate = self.cache[next_zobrist_hash]["white_checkmate"]
-                                self.black_checkmate = self.cache[next_zobrist_hash]["black_checkmate"]
-                                self.white_stalemate = self.cache[next_zobrist_hash]["white_stalemate"]
-                                self.black_stalemate = self.cache[next_zobrist_hash]["black_stalemate"]
-                            else:
-                                next_attack_info = self.board.get_attack_info(self.board.king_pos(self.next_player(player)))
-                                self.board.check_gamestate(next_attack_info)
-                            
-                            res = self.minimax(depth - 1, alpha, beta, self.next_player(player), next_attack_info, next_zobrist_hash, start_time, time_limit)
-                            
-                            self.nodes_searched += 1
-
-                            # Undo the move         
-                            self.board.undo_move(prev_state)
-
-                            if res:
-                                if best_move:
-                                    # Maximising player
-                                    if player == "white":
-                                        if (best_move[0] < res[0]):
-                                            best_move = (res[0], move, square)
-                                        
-                                        alpha = max(alpha, best_move[0])        
-                                        if beta <= alpha:
-                                            self.nodes_pruned += 1
-                                            break
-
-                                    # Minimising player
-                                    else:
-                                        if (best_move[0] > res[0]):
-                                            best_move = (res[0], move, square)
-                                        
-                                        beta = min(beta, best_move[0])
-                                        if beta <= alpha:
-                                            self.nodes_pruned += 1
-                                            break
-                                else:
+                    if res:
+                        if best_move:
+                            # Maximising player
+                            if player == "white":
+                                if (best_move[0] < res[0]):
                                     best_move = (res[0], move, square)
+                                
+                                alpha = max(alpha, best_move[0])        
+                                if beta <= alpha:
+                                    self.nodes_pruned += 1
+                                    break
+
+                            # Minimising player
+                            else:
+                                if (best_move[0] > res[0]):
+                                    best_move = (res[0], move, square)
+                                
+                                beta = min(beta, best_move[0])
+                                if beta <= alpha:
+                                    self.nodes_pruned += 1
+                                    break
+                        else:
+                            best_move = (res[0], move, square)
                 
                     if beta <= alpha:
                         break   
                 if beta <= alpha:
                     break
+        
                 
         score = best_move[0]
         
@@ -321,7 +310,8 @@ class ChessAI:
             "depth": depth,
             "score": score,
             "flag": flag,
-            "attack_info": attack_info,
+            "attack_info": original_attack_info,
+            "move_info": original_move_info,
             "white_checkmate": self.board.white_checkmate,
             "black_checkmate": self.board.black_checkmate,
             "white_stalemate": self.board.white_stalemate,
@@ -330,7 +320,7 @@ class ChessAI:
         
         return best_move
     
-    def next_move(self, board):
+    def next_move(self,player):
         """
             Make the next move for the AI
         """
@@ -338,11 +328,11 @@ class ChessAI:
         self.nodes_pruned = 0
         self.cache_hits = 0
         self.nodes_searched = 0
-
-        attack_info = self.board.get_attack_info(self.board.king_pos("black"))
-        zobrist_hash = self.zobrist.get_hash(self.board, "black")
+        attack_info = self.board.get_attack_info(self.board.king_pos(player))
+        move_info = self.board.get_move_info(player, attack_info)
+        zobrist_hash = self.zobrist.get_hash(self.board, player)
         start_time = time.time()
-        best_move = self.minimax(depth = 5, alpha=float('-inf'), beta = float('inf'), player = "black", attack_info=attack_info, zobrist_hash=zobrist_hash) 
+        best_move = self.minimax(depth = 5, alpha=float('-inf'), beta = float('inf'), player = player, move_info = move_info, attack_info=attack_info, zobrist_hash=zobrist_hash) 
         # best_move = self.iterative_deepening(max_depth=10, time_limit=10.0)
         end_time = time.time()
         if best_move:
@@ -354,7 +344,7 @@ class ChessAI:
             print(f"Time taken: {(end_time - start_time):.2f} seconds")
             print(f"Number of times accessed cache: {self.cache_hits}")
             print(f"Size of cache: {len(self.cache)}")
-            board.move(square.row, square.col, move) 
+            self.board.move(square.row, square.col, move) 
     
     def next_player(self, player):
         return "white" if player == "black" else "black"

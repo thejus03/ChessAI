@@ -7,13 +7,14 @@ from chessAI import ChessAI
 class Main:
     def __init__(self):
         pygame.init()
+        pygame.display.set_icon(pygame.image.load("images/chess.png"))
         # Set screen size
         self.screen = pygame.display.set_mode((WIDTH, HEIGHT)) 
         # Create Game object
         self.game = Game()
         self.board = self.game.board
         # Set name of window
-        pygame.display.set_caption('Chess')
+        pygame.display.set_caption('ChessAI')
         self.dragger = self.game.dragger
         self.ChessAI = ChessAI(self.board)
         self.mode = None
@@ -22,7 +23,7 @@ class Main:
          
     def start(self):
         attack_info = None
-        
+        # move_info = None
         while True:
             if not self.mode:
                 self.game.show_mode(self.screen)
@@ -74,10 +75,11 @@ class Main:
                 if self.mode == "chessai" and self.game.player == "black":
                     pygame.display.update()
                     
-                    self.ChessAI.next_move(self.board)
+                    self.ChessAI.next_move(self.game.player)
 
                     attack_info = self.board.get_attack_info(self.board.king_pos(self.board.rival_player(self.game.player)))
-                    self.board.check_gamestate(attack_info)
+                    move_info = self.board.get_move_info(self.board.rival_player(self.game.player),attack_info)
+                    self.board.check_gamestate(attack_info, move_info)
                     # Check for checkmate or stalemate
                     if self.board.white_checkmate: # White loses
                         self.game_over = "white_checkmate"
@@ -104,13 +106,9 @@ class Main:
 
                                 # Check if valid piece is being moved
                                 if piece.color == self.game.player:
-                                    # if self.board.in_check(self.game.player):
-                                        # self.board.calc_moves(clicked_row, clicked_col)
-                                    # else:
                                     if not attack_info:
                                         king_pos = self.board.king_pos(self.game.player)
                                         attack_info = self.board.get_attack_info(king_pos)
-                                    # print(attack_info)
                                     self.board.calc_moves(clicked_row, clicked_col, attack_info)
                                     self.dragger.start_drag(piece) 
                                     self.dragger.save_init(event.pos)
@@ -143,7 +141,8 @@ class Main:
                                 if self.board.valid_move(piece, (released_row, released_col)):
                                     self.board.move(self.dragger.initialRow, self.dragger.initialCol, (released_row, released_col))
                                     attack_info = self.board.get_attack_info(self.board.king_pos(self.board.rival_player(self.game.player)))
-                                    self.board.check_gamestate(attack_info)
+                                    move_info = self.board.get_move_info(self.board.rival_player(self.game.player), attack_info )
+                                    self.board.check_gamestate(attack_info, move_info)
                                     # Check for checkmate or stalemate
                                     if self.board.white_checkmate: # White loses
                                         self.game_over = "white_checkmate"
