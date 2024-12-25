@@ -8,7 +8,7 @@
 I created this project for my own learning and to test out how alpha-beta pruning works in chess. As I got started, it turned out that chess programming is vast and an endless rabbit hole. I have tried to implement some of the intriguing concepts in chess programming and optimise in areas as much as possible.
 
 ## Description
-The AI mode uses the **minimax algorithm with alpha beta pruning** to make the best move, thinking *5 moves ahead within reasonable time (usually 5-10 seconds)*. The evaluation function is based on the piece values and the position of the pieces on the board. Currently, the AI is not unbeatable, but it is quite a challenge for a beginner to intermediate player and definitely me.
+The AI mode uses the **minimax algorithm with alpha beta pruning** to make the best move, thinking *5 moves ahead within reasonable time (usually 5-10 seconds)*. The evaluation function is based on the piece values and the position of the pieces on the board. Currently, the AI is not unbeatable, but it is quite a challenge for a beginner to intermediate player - and definitely me.
 
 Some of the features/optimisations made include:
 
